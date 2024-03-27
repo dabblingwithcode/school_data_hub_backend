@@ -5,7 +5,7 @@ __pycache__/
 
 # Logs and databases
 *.log
-*.sqlite
+*.sqlite3
 *.db
 
 # Environment variables file
@@ -13,3 +13,7 @@ __pycache__/
 
 # Virtual environment
 venv/
+
+# file extensions
+**/*.jpg
+**/*.json
