@@ -5,6 +5,9 @@ import os
 from apiflask import APIBlueprint, abort
 from flask import json, jsonify, request
 from auth_middleware import token_required
+from models.category import GoalCategory
+from models.competence import Competence
+from models.schoolday import Schoolday
 from schemas.schemas import ApiFileSchema
 from schemas.pupil_schemas import *
 from schemas.goal_schemas import *

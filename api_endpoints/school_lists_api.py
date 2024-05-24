@@ -22,15 +22,16 @@ def add_list_all(current_user, json_data):
     if not current_user.admin:
         abort(401, message="Keine Berechtigung!")
     data = json_data    
-    list_id = str(uuid.uuid4().hex)
     list_name = data['list_name']
-    list_description = data['list_description']
-    visibility = data['visibility']
     existing_list = SchoolList.query.filter_by(list_name = list_name).first()
     if existing_list:
-        abort(400, message="Die Liste existiert bereits!")   
+        abort(400, message="Die Liste existiert bereits!")
+    list_id = str(uuid.uuid4().hex)
+    list_description = data['list_description']
+    visibility = data['visibility']   
     created_by = current_user.name
-    new_list = SchoolList(list_id, list_name, list_description, created_by, visibility)
+    authorized_users = None
+    new_list = SchoolList(list_id, list_name, list_description, created_by, visibility, authorized_users)
     db.session.add(new_list)
     all_pupils = Pupil.query.all()
     for item in all_pupils:
@@ -62,7 +63,8 @@ def add_list_group(current_user, json_data):
     list_description = data['list_description']
     visibility = data['visibility']
     created_by = current_user.name
-    new_list = SchoolList(list_id, list_name, list_description, created_by, visibility)
+    authorized_users = None
+    new_list = SchoolList(list_id, list_name, list_description, created_by, visibility, authorized_users)
     db.session.add(new_list)
     #-We have to create the list to populate it with pupils.
     #-This is why it is created even if pupils are wrong and the list remains empty. 
@@ -98,7 +100,9 @@ def patch_school_list(current_user, list_id, json_data):
             case 'list_description':
                 existing_list.list_description = data[key]
             case 'visibility':
-                existing_list.visibility = data[key]    
+                existing_list.visibility = data[key]
+            case 'authorized_users':
+                existing_list.authorized_users = data[key]   
     db.session.commit()
     return existing_list
 
@@ -164,6 +168,7 @@ def add_pupil_to_list(current_user, list_id, json_data):
 #- DELETE LIST 
 ##############
 @school_list_api.route('/<list_id>', methods=['DELETE'])
+@school_list_api.output(school_lists_schema)
 @school_list_api.doc(security='ApiKeyAuth', tags=['School Lists'], summary='Delete a school list')
 @token_required
 def delete_list(current_user, list_id):
@@ -177,4 +182,7 @@ def delete_list(current_user, list_id):
         db.session.delete(item)
     db.session.delete(this_list)
     db.session.commit()
-    return jsonify( {"message": "Die Schulliste wurde gelöscht!"}), 200
+    all_lists = SchoolList.query.all()
+    if all_lists == []:
+        abort(404, message="Keine Listen vorhanden!")
+    return all_lists

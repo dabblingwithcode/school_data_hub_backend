@@ -21,24 +21,52 @@ def add_authorization_all(current_user, json_data):
     authorization_id = str(uuid.uuid4().hex)
     authorization_name = json_data['authorization_name']
     authorization_description = json_data['authorization_description']
-    existing_authorization = Authorization.query.filter_by(authorization_name = authorization_name).first()
+    existing_authorization = db.session.query(Authorization.query.filter_by(authorization_name = authorization_name).exists()).scalar()
     if existing_authorization:
         return jsonify({'message': 'Diese Einwilligung existiert schon!'}), 400
+
     user_name = current_user.name
-    new_authorization = Authorization( authorization_id,  authorization_name,  authorization_description, user_name)
+    new_authorization = Authorization(authorization_id, authorization_name, authorization_description, user_name)
     db.session.add(new_authorization)
+    db.session.flush()
+
     all_pupils = Pupil.query.all()
-    for item in all_pupils:
-        origin_authorization = authorization_id
-        pupil_id = item.internal_id
-        status = None
-        comment = None
-        #- HACKY FIX - this should be a nullable modified_by
-        created_by = ''
-        new_pupil_authorization = PupilAuthorization(status=status, comment=comment, created_by=user_name, file_url=None, origin_authorization=origin_authorization, pupil_id=pupil_id)
-        db.session.add(new_pupil_authorization)
+    new_pupil_authorizations = [
+        PupilAuthorization(
+            status=None, 
+            comment=None, 
+            created_by=user_name, 
+            file_url=None, 
+            origin_authorization=authorization_id, 
+            pupil_id=pupil.internal_id
+        ) 
+        for pupil in all_pupils
+    ]
+    db.session.bulk_save_objects(new_pupil_authorizations)
     db.session.commit()    
     return all_pupils
+# def add_authorization_all(current_user, json_data):
+#     authorization_id = str(uuid.uuid4().hex)
+#     authorization_name = json_data['authorization_name']
+#     authorization_description = json_data['authorization_description']
+#     existing_authorization = Authorization.query.filter_by(authorization_name = authorization_name).first()
+#     if existing_authorization:
+#         return jsonify({'message': 'Diese Einwilligung existiert schon!'}), 400
+#     user_name = current_user.name
+#     new_authorization = Authorization( authorization_id,  authorization_name,  authorization_description, user_name)
+#     db.session.add(new_authorization)
+#     all_pupils = Pupil.query.all()
+#     for item in all_pupils:
+#         origin_authorization = authorization_id
+#         pupil_id = item.internal_id
+#         status = None
+#         comment = None
+#         #- HACKY FIX - this should be a nullable modified_by
+#         created_by = ''
+#         new_pupil_authorization = PupilAuthorization(status=status, comment=comment, created_by=user_name, file_url=None, origin_authorization=origin_authorization, pupil_id=pupil_id)
+#         db.session.add(new_pupil_authorization)
+#     db.session.commit()    
+#     return all_pupils
 
 #- POST AUTHORIZATION WITH LIST OF PUPILS
 #########################################

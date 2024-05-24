@@ -3,7 +3,6 @@ import uuid
 from apiflask import APIBlueprint, abort
 from flask import current_app, json, jsonify, request
 from app import db
-from jwt import decode
 import jwt
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.sql import exists
@@ -36,7 +35,11 @@ def login():
         return jsonify({'token' : token,
                         'admin': isAdmin,
                         'role': user.role,
-                        'credit': user.credit})
+                        'credit': user.credit,
+                        'time_units': user.time_units,
+                        'name': user.name,
+                        'role': user.role,
+                        'contact': user.contact}), 200
     return jsonify({'message' : 'Falsches Passwort!'}), 401
 
 #- GET USERS
@@ -79,7 +82,7 @@ def increase_users_credit(current_user):
     if users == []:
         abort(404, message='Keine Benutzer/Benutzerin gefunden!')
     for user in users:
-        credit = int((user.role).split('*')[0])
+        credit = user.time_units
         user.credit = user.credit + credit
     db.session.commit()
     return users
@@ -93,7 +96,10 @@ def increase_users_credit(current_user):
     "password": "PASSWORD",
     "admin": True,
     "role": "teacher",
-    "credit": 0
+    "tutoring": "D2",
+    "contact": "@user:example.com",
+    "credit": 0,
+    "time_units": 0
 })
 @user_api.output(user_schema)
 @token_required
@@ -107,15 +113,18 @@ def create_user(current_user, json_data):
           print('Falsche Parameter!')
           return jsonify({'message' : 'Falsche Parameter!'}), 400 
     data = json_data
-    #data = request.get_json()
-    print('data: ', data)
     if db.session.query(exists().where(User.name == data['name'])).scalar() == True:
            return jsonify({'message' : 'Benutzer/Benutzerin existiert schon!'}), 400
     is_admin = data['admin']
     role = data['role']
+    credit=data['credit']
+    time_units=data['time_units']
+    tutoring = data['tutoring']
+    contact = data['contact']
     hashed_password = generate_password_hash(data['password'], method='scrypt')
     new_user = User(public_id=str(uuid.uuid4().hex), name=data['name'],
-                     password=hashed_password, admin=is_admin, role=role, credit=data['credit'])
+                     password=hashed_password, admin=is_admin, role=role, tutoring=tutoring,
+                     contact=contact, credit=credit, time_units=time_units)
     db.session.add(new_user)
     # #- LOG ENTRY
     # log_datetime = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
@@ -131,6 +140,9 @@ def create_user(current_user, json_data):
     user_data['credit'] = new_user.credit
     user_data['is_admin'] = new_user.admin
     user_data['role'] = new_user.role
+    user_data['time_units'] = new_user.time_units
+    user_data['contact'] = new_user.contact
+    user_data['tutoring'] = new_user.tutoring
     return jsonify(user_data)
 
 #- PATCH USER 
@@ -141,8 +153,11 @@ def create_user(current_user, json_data):
     "name": "USERNAME",
     "password": "PASSWORD",
     "admin": True,
-    "role": "admin",
-    "credit": 0
+    "role": "teacher",
+    "tutoring": "D2",
+    "contact": "@user:example.com",
+    "credit": 0,
+    "time_units": 0
 })
 @user_api.output(user_schema)
 @token_required
@@ -165,6 +180,12 @@ def patch_user(current_user, public_id, json_data):
                 user.credit = user.credit + new_credit   
             case 'role':
                 user.role = data[key]
+            case 'time_units':
+                user.time_units = data[key]
+            case 'tutoring':
+                user.tutoring = data[key]
+            case 'contact':
+                user.contact = data[key]
     #- LOG ENTRY
     log_datetime = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
     username = current_user.name
@@ -179,25 +200,22 @@ def patch_user(current_user, public_id, json_data):
 #######################
 @user_api.route('/<public_id>/new_password', methods=['PATCH'])
 @user_api.doc(security='ApiKeyAuth', tags=['User'], summary='Change User Password')
-@user_api.input(user_schema,  example={
-    "name": "USERNAME",
-    "password": "PASSWORD",
-    "admin": True,
-    "role": "admin",
-    "credit": 0
-})
+@user_api.input(user_new_password_schema)
 @user_api.output(user_schema)
 @token_required
 def change_user_password(current_user, public_id, json_data):  
     user = User.query.filter_by(public_id=public_id).first()
     if not user:
         return jsonify({'message' : 'Benutzer/Benutzerin nicht gefunden!'}), 404
-    if user != current_user or not current_user.admin:
-        return jsonify({'message' : 'Keine Berechtigung!'}), 403
+
+    if user != current_user:
+        if current_user.admin == False :
+            abort(403, message='Keine Berechtigung!')
+        
     data = json_data
     #data = request.get_json()
     if user == current_user :   
-        if not check_password_hash(user.password, data['password']):
+        if not check_password_hash(user.password, data['old_password']):
             abort(403, message='Falsches Passwort!')
         hashed_password = generate_password_hash(data['new_password'], method='scrypt')
         user.password = hashed_password

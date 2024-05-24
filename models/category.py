@@ -1,4 +1,4 @@
-from .schoolday import db
+from models.shared import db
 
 class PupilCategoryStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)

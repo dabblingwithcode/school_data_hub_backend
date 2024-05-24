@@ -1,6 +1,4 @@
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
+from models.shared import db
 
 class SchoolSemester(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -77,6 +75,7 @@ class Admonition(db.Model):
     processed_by = db.Column(db.String(10), nullable = True)
     processed_at = db.Column(db.Date, nullable = True)
     file_url = db.Column(db.String(50), nullable = True)
+    processed_file_url = db.Column(db.String(50), nullable = True)
 
     #- RELATIONSHIP TO PUPIL MANY-TO-ONE
     admonished_pupil_id = db.Column('admonished_pupil', db.Integer,
@@ -89,7 +88,7 @@ class Admonition(db.Model):
     admonished_day = db.relationship('Schoolday', back_populates="admonitions")
 
     def __init__(self, admonition_id, admonished_pupil_id, admonished_day_id,
-                 admonition_type, admonition_reason, admonishing_user, processed, processed_by, processed_at, file_url):
+                 admonition_type, admonition_reason, admonishing_user, processed, processed_by, processed_at, file_url, processed_file_url):
         self.admonition_id = admonition_id
         self.admonished_pupil_id = admonished_pupil_id
         self.admonished_day_id = admonished_day_id
@@ -100,5 +99,6 @@ class Admonition(db.Model):
         self.processed_by = processed_by
         self.processed_at = processed_at
         self.file_url = file_url
+        self.processed_file_url = processed_file_url
 
 

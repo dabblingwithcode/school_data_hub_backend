@@ -76,10 +76,11 @@ def create_workbook(current_user, json_data):
     name = data['name']
     subject = data['subject']
     level = data['level']
+    amount = data['amount']
     image_url = data['image_url']
     if db.session.query(Workbook).filter_by(isbn= isbn).scalar() is not None:
         return jsonify({'message': 'Das Arbeitsheft existiert schon!'}), 400
-    new_workbook = Workbook(isbn, name, subject, level, image_url)
+    new_workbook = Workbook(isbn, name, subject, level, amount, image_url)
     db.session.add(new_workbook)
   
     #- LOG ENTRY
@@ -105,7 +106,7 @@ def patch_workbook(current_user, isbn, json_data):
     workbook = db.session.query(Workbook).filter_by(isbn= isbn).scalar()
     if workbook is None:
         return jsonify({'message': 'Das Arbeitsheft existiert nicht!'}), 404
-    data = request.get_json()
+    data = json_data
     for key in data:
         match key:
             case 'name':
@@ -114,6 +115,8 @@ def patch_workbook(current_user, isbn, json_data):
                 workbook.subject = data['subject']
             case 'level':
                 workbook.level = data['level']
+            case 'amount':
+                workbook.amount = data['amount']
             case 'image_url':
                 workbook.image_url = data['image_url']
     db.session.commit()
@@ -158,7 +161,6 @@ def get_workbook_image(current_user, isbn):
         abort(404, message="Keine Datei vorhanden!")
     return send_file(str(workbook.image_url), mimetype='image/jpg')
 
-
 #- DELETE WORKBOOK
 ##################
 
@@ -171,6 +173,8 @@ def delete_workbook(current_user, isbn):
     this_workbook = Workbook.query.filter_by(isbn = isbn).first()
     if this_workbook == None:
         return jsonify({'message': 'Dieses Arbeitsheft existiert nicht!'}), 404
+    if this_workbook.image_url is not None:
+        os.remove(str(this_workbook.image_url))
     db.session.delete(this_workbook)
     db.session.commit()
     all_workbooks = Workbook.query.all()

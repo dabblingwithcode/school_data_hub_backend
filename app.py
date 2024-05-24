@@ -1,10 +1,13 @@
+import uuid
 from apiflask import APIFlask
 from apiflask.ui_templates import redoc_template, elements_template, rapidoc_template
 from flask import render_template_string
 from dotenv import load_dotenv
 import os
+from werkzeug.security import generate_password_hash
+from flask_migrate import Migrate
 
-from models.schoolday import db
+from models.shared import db
 from api_endpoints.users_api import user_api
 from api_endpoints.pupils_api import pupil_api
 from api_endpoints.workbooks_api import workbook_api
@@ -27,10 +30,14 @@ from api_endpoints.authorizations_api import authorization_api
 from api_endpoints.pupil_authorizations_api import pupil_authorization_api
 from api_endpoints.school_semester_api import school_semester_api
 from api_endpoints.category_goals_api import category_goals_api
+from models.user import User
+from flask_caching import Cache
 
 #- INIT APP
 
 app = APIFlask(__name__)
+cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+app.cache = cache
 
 #- BLUEPRINTS
 
@@ -73,7 +80,7 @@ app.config['UPLOAD_EXTENSIONS'] = ['.jpg', '.jpeg', '.png']
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower in ALLOWED_EXTENSIONS
 
-#- OPEN API APP CONFIG
+#- OPEN API DOCS CONFIG
 
 app.title = 'School Data Hub'
 app.config['DESCRIPTION'] = 'A backend tool for managing complex lists out of the pocket.'
@@ -91,24 +98,24 @@ app.security_schemes = {
 }
 app.config['TAGS'] = [
     {'name': 'Auth', 'description': 'Basic Auth'},
-    {'name': 'User', 'description': 'User endpoints - tested'},
-    {'name': 'File Imports', 'description': 'File imports - tested'},
-    {'name': 'Pupil', 'description': 'Pupil endpoints - tested'},
-    {'name': 'Schooldays', 'description': 'Schoolday endpoints - tested'},
-    {'name': 'Missed Classes', 'description': 'MissedClass endpoints -tested'},
-    {'name': 'Admonitions', 'description': 'Admonition endpoints - tested'},
-    {'name': 'Competence', 'description': 'Competence endpoints - tested'},
-    {'name': 'Competence Checks', 'description': 'Competence check endpoints - tested'},
-    {'name': 'Competence Goals', 'description': 'Competence goal endpoints - tested'},
+    {'name': 'User', 'description': 'User endpoints'},
+    {'name': 'File Imports', 'description': 'File imports'},
+    {'name': 'Pupil', 'description': 'Pupil endpoints'},
+    {'name': 'Schooldays', 'description': 'Schoolday endpoints'},
+    {'name': 'Missed Classes', 'description': 'MissedClass endpoints'},
+    {'name': 'Admonitions', 'description': 'Admonition endpoints'},
+    {'name': 'Competence', 'description': 'Competence endpoints'},
+    {'name': 'Competence Checks', 'description': 'Competence check endpoints'},
+    {'name': 'Competence Goals', 'description': 'Competence goal endpoints'},
     {'name': 'Competence Report', 'description': 'Competence report for a school semester'},
-    {'name': 'Goal Categories', 'description': 'Goal category endpoints - tested'},
-    {'name': 'Category Statuses', 'description': 'Category status endpoints - tested'},
-    {'name': 'Goals', 'description': 'Goal endpoints - tested'},
-    {'name': 'Goal Checks', 'description': 'Goal check endpoints - tested'},
-    {'name': 'Authorizations', 'description': 'Authorization endpoints - tested'},
-    {'name': 'Pupil Authorizations', 'description': 'Pupil authorization endpoints - tested'},
-    {'name': 'School Lists', 'description': 'School list endpoints - tested'},
-    {'name': 'Pupil Lists', 'description': 'Pupil list endpoints - tested'},
+    {'name': 'Goal Categories', 'description': 'Goal category endpoints'},
+    {'name': 'Category Statuses', 'description': 'Category status endpoints'},
+    {'name': 'Goals', 'description': 'Goal endpoints'},
+    {'name': 'Goal Checks', 'description': 'Goal check endpoints'},
+    {'name': 'Authorizations', 'description': 'Authorization endpoints'},
+    {'name': 'Pupil Authorizations', 'description': 'Pupil authorization endpoints'},
+    {'name': 'School Lists', 'description': 'School list endpoints'},
+    {'name': 'Pupil Lists', 'description': 'Pupil list endpoints'},
     {'name': 'School Semester', 'description': 'School semester endpoints'},
     {'name': 'Workbooks', 'description': 'Workbook catalogue endpoints'},
     {'name': 'Pupil Workbooks', 'description': 'Pupil workbooks endpoints'},
@@ -128,6 +135,10 @@ app.config['SERVERS'] = [
            {
         'name': 'Test Server',
         'url': 'https://testhub.hermannschule.de'
+    },
+               {
+        'name': 'Test Server 2',
+        'url': 'https://testhub2.hermannschule.de'
     },
     {
         'name': 'Development Server',
@@ -179,10 +190,17 @@ def my_rapidoc():
 #- RUN SERVER
 
 # db.init_app(app) because of https://stackoverflow.com/questions/9692962/flask-sqlalchemy-import-context-issue/9695045#9695045
+migrate = Migrate(app, db)
 db.init_app(app)
 with app.app_context():
-    #db.drop_all()
+    # db.drop_all()
     db.create_all()
+    # if the database exists, check if there is a user "admin" - if not, create one
+    # if User.query.filter_by(name='ADM').first() is None:
+    #     password = generate_password_hash('admin', method='scrypt')
+    #     user = User(public_id=str(uuid.uuid4().hex), name='ADM', password=password, admin=True, role='admin', credit=50, time_units=0)
+    #     db.session.add(user)
+    #     db.session.commit()
 if __name__ == '__main__':
     app.run(host='192.168.178.107')
     #app.run(host='0.0.0.0')

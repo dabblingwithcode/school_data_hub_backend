@@ -1,4 +1,4 @@
-from .schoolday import *
+from models.shared import db
 
 class LogEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)

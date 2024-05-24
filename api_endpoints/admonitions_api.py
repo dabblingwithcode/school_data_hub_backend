@@ -25,6 +25,7 @@ admonition_api = APIBlueprint('admonitions_api', __name__, url_prefix='/api/admo
   "admonition_reason": "kodiert",
   "admonition_type": "kodiert",
   "file_url": None,
+  "processed_file_url": None,
   "processed": False,
   "processed_at": None,
   "processed_by": None
@@ -49,7 +50,8 @@ def add_admonition(current_user, json_data):
     processed_by = None
     processed_at = None
     file_url = None
-    new_admonition = Admonition(admonition_id, admonished_pupil_id, admonished_day_id, admonition_type, admonition_reason, admonishing_user, processed, processed_by, processed_at, file_url)
+    processed_file_url = None
+    new_admonition = Admonition(admonition_id, admonished_pupil_id, admonished_day_id, admonition_type, admonition_reason, admonishing_user, processed, processed_by, processed_at, file_url, processed_file_url)
     db.session.add(new_admonition)
     db.session.commit()
     pupil = Pupil.query.filter_by(internal_id = admonished_pupil_id).first()
@@ -108,6 +110,8 @@ def patch_admonition(current_user, admonition_id, json_data):
                 admonition.admonishing_user = data[key]
             case 'file_url':
                 admonition.file_url = data[key]
+            case 'processed_file_url':
+                admonition.processed_file_url = data[key]
     db.session.commit()
     pupil = Pupil.query.filter_by(internal_id = admonition.admonished_pupil_id).first()
     return pupil
@@ -136,6 +140,30 @@ def upload_admonition_file(current_user, admonition_id, files_data):
     pupil = Pupil.query.filter_by(internal_id = admonition.admonished_pupil_id).first()
     return pupil
 
+#- PATCH ADMONITION PROCESSED FILE
+##################################
+@admonition_api.route('/<admonition_id>/processed_file', methods=['PATCH'])
+@admonition_api.input(ApiFileSchema, location='files')
+@admonition_api.output(pupil_schema)
+@admonition_api.doc(security='ApiKeyAuth',tags=['Admonitions'], summary='PATCH-POST a file to document a given pupil processed admonition')
+@token_required
+def upload_admonition_processed_file(current_user, admonition_id, files_data):
+    admonition = db.session.query(Admonition).filter(Admonition.admonition_id == admonition_id ).first() 
+    if admonition is None:
+        return jsonify( {"message": "An admonition with this date and this student does not exist!"}), 404
+    if 'file' not in files_data:
+        abort(400, message="Keine Datei angegeben!")
+    file = files_data['file']
+    filename = str(uuid.uuid4().hex) + '.jpg'
+    file_url = current_app.config['UPLOAD_FOLDER'] + '/admn/' + filename
+    file.save(file_url)
+    if len(str(admonition.file_url)) > 4:
+        os.remove(str(admonition.file_url))
+    admonition.processed_file_url = file_url
+    db.session.commit()
+    pupil = Pupil.query.filter_by(internal_id = admonition.admonished_pupil_id).first()
+    return pupil
+
 #- GET ADMONITION FILE
 ######################
 @admonition_api.route('/<admonition_id>/file', methods=['GET'])
@@ -146,9 +174,25 @@ def download_admonition_file(current_user,admonition_id):
     admonition = db.session.query(Admonition).filter(Admonition.admonition_id == 
                                             admonition_id).first()
     if admonition == None:
-        abort(404, message="An admonition with this date and this student does not exist!")        
+        abort(404, message="An admonition with this date and this pupil does not exist!")        
     if len(str(admonition.file_url)) < 5:
         abort(404, message="This admonition has no file!") 
+    url_path = admonition.file_url
+    return send_file(url_path, mimetype='image/jpg')
+
+#- GET ADMONITION PROCESSED FILE
+################################
+@admonition_api.route('/<admonition_id>/processed_file', methods=['GET'])
+@admonition_api.output(FileSchema, content_type='image/jpeg')
+@admonition_api.doc(security='ApiKeyAuth', tags=['Admonitions'], summary='Get file of a given processed admonition')
+@token_required
+def download_admonition_processed_file(current_user,admonition_id):
+    admonition = db.session.query(Admonition).filter(Admonition.admonition_id == 
+                                            admonition_id).first()
+    if admonition == None:
+        abort(404, message="An admonition with this date and this pupil does not exist!")        
+    if len(str(admonition.processed_processed_file_url)) < 5:
+        abort(404, message="This admonition has no processed file!") 
     url_path = admonition.file_url
     return send_file(url_path, mimetype='image/jpg')
 
@@ -180,6 +224,34 @@ def delete_admonition_file(current_user, admonition_id):
     pupil = Pupil.query.filter_by(internal_id = admonition.admonished_pupil_id).first()
     return pupil
 
+#- DELETE ADMONITION PROCESSED FILE
+###################################
+@admonition_api.route('/<admonition_id>/processed_file', methods=['DELETE'])
+@admonition_api.output(pupil_schema)
+@admonition_api.doc(security='ApiKeyAuth', tags=['Admonitions'], summary='Delete admonition file of a given processed admonition')
+@token_required
+def delete_admonition_processed_file(current_user, admonition_id):
+    if not current_user:
+        abort(404, message='Bitte erneut einloggen!')
+    admonition = db.session.query(Admonition).filter(Admonition.admonition_id == admonition_id ).first() 
+    if admonition is None:
+        return jsonify( {"message": "An admonition with this date and this student does not exist!"}), 404
+    if len(str(admonition.processed_file_url)) < 5:
+        abort(404, message='This admonition has no file!')       
+    if len(str(admonition.processed_file_url)) > 4:
+        os.remove(str(admonition.processed_file_url))
+    admonition.processed_file_url = None
+    #- LOG ENTRY
+    log_datetime = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
+    user = current_user.name
+    endpoint = request.method + ': ' + request.path
+    payload = 'none'
+    new_log_entry = LogEntry(datetime= log_datetime, user=user, endpoint=endpoint, payload=payload)
+    db.session.add(new_log_entry)
+    db.session.commit()
+    pupil = Pupil.query.filter_by(internal_id = admonition.admonished_pupil_id).first()
+    return pupil
+
 #- DELETE ADMONITION
 ####################
 @admonition_api.route('/<admonition_id>/delete', methods=['DELETE'])
@@ -194,6 +266,8 @@ def delete_admonition(current_user, admonition_id):
         return jsonify( {"message": "An admonition with this date and this student does not exist!"}), 404      
     if admonition.file_url is not None:
         os.remove(str(admonition.file_url))
+    if admonition.processed_file_url is not None:
+        os.remove(str(admonition.processed_file_url))
     db.session.delete(admonition)
     db.session.commit()
     return pupil

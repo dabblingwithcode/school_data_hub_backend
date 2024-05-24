@@ -6,19 +6,21 @@ class Workbook(db.Model):
     name = db.Column(db.String(20))
     subject = db.Column(db.String(10))
     level = db.Column(db.String(5), nullable = False)
-
+    amount = db.Column(db.Integer, nullable = False, default = 0)
     image_url = db.Column(db.String(50), nullable = True)
 
     #- RELATIONSHIP TO PUPIL WORKBOOKS ONE-TO-MANY
     working_pupils = db.relationship('PupilWorkbook', back_populates='workbook',
                                      cascade='all, delete-orphan')
 
-    def __init__(self, isbn, name, subject, level, image_url):
+    def __init__(self, isbn, name, subject, level, amount, image_url):
         self.isbn = isbn
         self.name = name
         self.subject = subject
         self.level = level
+        self.amount = amount
         self.image_url = image_url
+
 
 class PupilWorkbook(db.Model):
     id = db.Column(db.Integer, primary_key=True) 

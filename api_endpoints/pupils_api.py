@@ -7,7 +7,7 @@ from app import db
 from models.log_entry import LogEntry
 from schemas.schemas import ApiFileSchema
 
-pupil_api = APIBlueprint('pupils_api', __name__, url_prefix='/api/pupil')
+pupil_api = APIBlueprint('pupils_api', __name__, url_prefix='/api/pupils')
 
 from models.pupil import CreditHistoryLog, Pupil
 from auth_middleware import token_required
@@ -83,7 +83,7 @@ def add_pupil(current_user, json_data):
 @pupil_api.route('/<internal_id>', methods=['PATCH'])
 @pupil_api.input(pupil_flat_schema)
 @pupil_api.output(pupil_schema)
-@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'])
+@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'],summary='Patch a Pupil')
 
 @token_required
 def update_pupil(current_user, internal_id, json_data):
@@ -115,8 +115,8 @@ def update_pupil(current_user, internal_id, json_data):
                 db.session.add(new_credit_history_log)                  
             case 'contact':
                 pupil.contact = data[key]
-            case 'parent_contact':
-                pupil.parent_contact = data[key]
+            case 'parents_contact':
+                pupil.parents_contact = data[key]
             case 'ogs':
                 pupil.ogs = data[key]
             case 'pick_up_time':
@@ -152,6 +152,47 @@ def update_pupil(current_user, internal_id, json_data):
     db.session.commit()
     return pupil # pupil_schema.jsonify(pupil)
 
+#- PATCH SIBLING PUPILS
+#######################
+
+@pupil_api.route('/patch_siblings', methods=['PATCH'])
+@pupil_api.input(pupil_siblings_patch_schema)
+@pupil_api.output(pupils_schema)
+@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'], summary='patch siblings with common value')
+
+@token_required
+def update_siblings(current_user, json_data):
+    internal_id_list = json_data['pupils']
+  
+    pupils = []
+    for item in internal_id_list:
+        this_pupil = db.session.query(Pupil).filter(Pupil.internal_id ==
+                                                    item).first()
+        if this_pupil != None:
+            pupils.append(this_pupil)
+    if pupils == []:
+        return jsonify({'error': 'None of the given pupils found!'}), 400
+    data = json_data # request.get_json()
+    for pupil in pupils:
+        for key in data:
+            match key:
+                case 'parents_contact':
+                    pupil.parents_contact = data[key]
+                case'communication_tutor1':            
+                    pupil.communication_tutor1 = data[key] 
+                case'communication_tutor2':            
+                    pupil.communication_tutor2 = data[key]                    
+    
+    #- LOG ENTRY
+    log_datetime = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M:%S'), '%Y-%m-%d %H:%M:%S')
+    user = current_user.name
+    endpoint = request.method + ': ' + request.path
+    payload = json.dumps(data, indent=None, sort_keys=True)
+    new_log_entry = LogEntry(datetime= log_datetime, user=user, endpoint=endpoint, payload=payload)
+    db.session.add(new_log_entry)
+
+    db.session.commit()
+    return pupils # pupil_schema.jsonify(pupil)
 
 #- GET ALL PUPILS
 #################
@@ -176,7 +217,7 @@ def get_pupils(current_user):
 
 @pupil_api.route('/all/flat', methods=['GET'])
 @pupil_api.output(pupils_flat_schema)
-@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'])
+@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'],summary='Fetch all pupils without list objects')
 
 @token_required
 def get_pupils_only(current_user):
@@ -195,7 +236,7 @@ def get_pupils_only(current_user):
 @pupil_api.route('/list', methods=['POST'])
 @pupil_api.input(pupil_id_list_schema)
 @pupil_api.output(pupils_schema)
-@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'])
+@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'],summary='Fetch pupils in a given ids array')
 @pupil_api.output(PupilSchema)
 @token_required
 def get_given_pupils(current_user, json_data):
@@ -218,7 +259,7 @@ def get_given_pupils(current_user, json_data):
 
 @pupil_api.route('/<internal_id>', methods=['GET'])
 @pupil_api.output(pupil_schema)
-@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'])
+@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'],summary='Fetch given pupil')
 
 @token_required
 def get_pupil(current_user, internal_id):
@@ -235,7 +276,7 @@ def get_pupil(current_user, internal_id):
 ###############
 
 @pupil_api.route('/<internal_id>', methods=['DELETE'])
-@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'])
+@pupil_api.doc(security='ApiKeyAuth', tags=['Pupil'],summary='delete given pupil')
 
 @token_required
 def delete_pupil(current_user, internal_id):

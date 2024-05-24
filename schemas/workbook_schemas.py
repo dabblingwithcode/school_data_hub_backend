@@ -37,10 +37,11 @@ class WorkbookSchema(Schema):
     name = fields.String()
     subject = fields.String()
     level = fields.String()
+    amount = fields.Integer()
     image_url = fields.String(allow_none = True)
     working_pupils = fields.List(fields.Nested(PupilWorkbookListSchema))
     class Meta:
-        fields = ('isbn', 'name', 'subject', 'level','image_url','working_pupils')
+        fields = ('isbn', 'name', 'subject', 'level', 'amount','image_url','working_pupils')
 
 workbook_schema = WorkbookSchema()
 workbooks_schema = WorkbookSchema(many=True)
@@ -50,9 +51,10 @@ class WorkbookFlatSchema(Schema):
     name = fields.String()
     subject = fields.String()
     level = fields.String()
-    image_url = fields.String()   
+    amount = fields.Integer()
+    image_url = fields.String(allow_none = True)
     class Meta:
-        fields = ('isbn', 'name', 'subject', 'level', 'image_url')
+        fields = ('isbn', 'name', 'subject', 'level', 'amount', 'image_url')
 
 workbook_flat_schema = WorkbookFlatSchema()
 workbooks_flat_schema = WorkbookFlatSchema(many=True)

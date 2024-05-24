@@ -1,4 +1,4 @@
-from models.schoolday import *
+from models.shared import db
 
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key = True)

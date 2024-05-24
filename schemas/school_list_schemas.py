@@ -1,9 +1,7 @@
 from apiflask import Schema, fields
 
-####################
 #- PUPIL LIST SCHEMA
 ####################
-
 class PupilListPatchSchema(Schema):
     pupil_list_status = fields.Boolean(allow_none=True)
     pupil_list_comment = fields.String(allow_none=True)
@@ -35,28 +33,28 @@ class PupilProfileListSchema(Schema):
 pupilprofilelist_schema = PupilListSchema()
 pupilprofilelists_schema = PupilListSchema(many=True)
 
-#####################
 #- SCHOOL LIST SCHEMA
 #####################
-
 class SchoolListInGroupSchema(Schema):
     list_name = fields.String()
     list_description = fields.String()
     visibility = fields.String()
+    authorized_users = fields.String()
     pupils = fields.List(fields.Integer())  
     class Meta:
         fields = ('list_name', 'list_description',
-                  'visibility', 'pupils')
+                  'visibility' 'authorized_users', 'pupils')
 school_list_in_group_schema = SchoolListInGroupSchema()
 school_lists_in_group_schema = SchoolListInGroupSchema(many= True)
 
 class SchoolListInSchema(Schema):
     list_name = fields.String()
     list_description = fields.String()
-    visibility = fields.String()  
+    visibility = fields.String()
+    authorized_users = fields.String() 
     class Meta:
         fields = ('list_name', 'list_description',
-                  'visibility')
+                  'visibility', 'authorized_users')
 school_list_in_schema = SchoolListInSchema()
 school_lists_in_schema = SchoolListInSchema(many= True)
 
@@ -66,10 +64,11 @@ class SchoolListSchema(Schema):
     list_description = fields.String()
     created_by = fields.String()
     visibility = fields.String()
+    authorized_users = fields.String()
     pupils_in_list = fields.List(fields.Nested(PupilListSchema))   
     class Meta:
         fields = ('list_id', 'list_name', 'list_description',
-                  'created_by', 'visibility', 'pupils_in_list')
+                  'created_by', 'visibility', 'authorized_users','pupils_in_list')
 school_list_schema = SchoolListSchema()
 school_lists_schema = SchoolListSchema(many= True)
 
@@ -78,9 +77,10 @@ class SchoolListFlatSchema(Schema):
     list_name = fields.String()
     list_description = fields.String()
     created_by = fields.String()
-    visibility = fields.String()    
+    visibility = fields.String()
+    authorized_users = fields.String()
     class Meta:
         fields = ('list_id', 'list_name', 'list_description',
-                  'created_by', 'visibility')
+                  'created_by', 'visibility', 'authorized_users')
 school_list_flat_schema = SchoolListFlatSchema()
 school_lists_flat_schema = SchoolListFlatSchema(many= True)

@@ -1,4 +1,6 @@
-from models.schoolday import *
+from models.shared import db
+
+
 
 class SchoolList(db.Model):
     id = db.Column(db.Integer, primary_key = True)
@@ -7,22 +9,24 @@ class SchoolList(db.Model):
     list_description = db.Column(db.String(100), nullable=False)
     created_by = db.Column(db.String(5), nullable = False)
     visibility = db.Column(db.String(5), nullable = False)
+    authorized_users = db.Column(db.String(100), nullable = True)
 
     #- RELATIONSHIP TO PUPILS ONE-TO-MANY over PUPIL LIST
     pupils_in_list = db.relationship('PupilList', back_populates='pupil_in_list',
                                    cascade="all, delete-orphan")
-    def __init__(self, list_id, list_name, list_description, created_by, visibility):
+    def __init__(self, list_id, list_name, list_description, created_by, visibility, authorized_users):
         self.list_id = list_id
         self.list_name = list_name
         self.list_description = list_description
         self.created_by = created_by
         self.visibility = visibility
+        self.authorized_users = authorized_users
 
 class PupilList(db.Model):
     id = db.Column(db.Integer, primary_key = True)
     pupil_list_status = db.Column(db.Boolean)
     pupil_list_comment = db.Column(db.String(30))
-    pupil_list_entry_by = db.Column(db.String(20))
+    pupil_list_entry_by = db.Column(db.String(20), nullable = True)
 
     #- RELATIONSHIP TO SCHOOL LIST MANY-TO-ONE
     origin_list = db.Column(db.String(50), db.ForeignKey('school_list.list_id'))
