@@ -157,8 +157,8 @@ def upload_admonition_processed_file(current_user, admonition_id, files_data):
     filename = str(uuid.uuid4().hex) + '.jpg'
     file_url = current_app.config['UPLOAD_FOLDER'] + '/admn/' + filename
     file.save(file_url)
-    if len(str(admonition.file_url)) > 4:
-        os.remove(str(admonition.file_url))
+    if len(str(admonition.processed_file_url)) > 4:
+        os.remove(str(admonition.processed_file_url))
     admonition.processed_file_url = file_url
     db.session.commit()
     pupil = Pupil.query.filter_by(internal_id = admonition.admonished_pupil_id).first()
@@ -191,9 +191,9 @@ def download_admonition_processed_file(current_user,admonition_id):
                                             admonition_id).first()
     if admonition == None:
         abort(404, message="An admonition with this date and this pupil does not exist!")        
-    if len(str(admonition.processed_processed_file_url)) < 5:
+    if len(str(admonition.processed_file_url)) < 5:
         abort(404, message="This admonition has no processed file!") 
-    url_path = admonition.file_url
+    url_path = admonition.processed_file_url
     return send_file(url_path, mimetype='image/jpg')
 
 #- DELETE ADMONITION FILE
